@@ -285,3 +285,30 @@ print(df.head())
 
 df.to_csv("delhi_aqi_feature_engineered.csv", index=False)
 print("\nSaved → delhi_aqi_feature_engineered.csv")
+
+from sklearn.model_selection import train_test_split
+from sklearn.ensemble import RandomForestRegressor
+
+df = pd.read_csv("delhi_aqi_feature_engineered.csv")
+
+if "date" in df.columns:
+    df = df.drop("date", axis=1)
+
+X = df.drop("aqi", axis=1)
+y = df["aqi"]
+
+X_train, X_test, y_train, y_test = train_test_split(
+    X,
+    y,
+    test_size=0.2,
+    random_state=42
+)
+
+model = RandomForestRegressor(
+    n_estimators=100,
+    random_state=42
+)
+
+model.fit(X_train, y_train)
+
+print("Model trained successfully")
