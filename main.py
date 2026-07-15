@@ -1,19 +1,24 @@
 import pandas as pd
 import numpy as np
-df=pd.read_csv("delhi_aqi.csv")
+import matplotlib.pyplot as plt
+from sklearn.preprocessing import StandardScaler
+from sklearn.model_selection import train_test_split, GridSearchCV
+from sklearn.ensemble import RandomForestRegressor
+from sklearn.metrics import mean_absolute_error, r2_score
+
+df = pd.read_csv("delhi_aqi.csv")
 df["date"] = pd.to_datetime(df["date"])
 df = df.sort_values("date").reset_index(drop=True)
 numeric_cols = df.select_dtypes(include="number").columns.tolist()
 print("Shape before anomaly fixes:", df.shape)
 
-if df.isnull().sum().sum()==0:
+if df.isnull().sum().sum() == 0:
     print("\nFix-1 \n\tNo missing value")
 else:
     print("Missing value: ", df.isnull().sum().sum())
 
-# checking duplication
 date_dups = df.duplicated(subset="date").sum()
-if df.duplicated().sum()==0 and date_dups==0:
+if df.duplicated().sum() == 0 and date_dups == 0:
     print("\nFix-2\n\tNo duplicated row")
 else:
     print(f"duplicated row: {df.duplicated().sum()}")
@@ -30,26 +35,25 @@ if not neg_found:
     print("\nFix-3\n\tNo negative values found.")
 
 full_range = pd.date_range(start=df["date"].min(), end=df["date"].max(), freq="1h")
-df = df.set_index("date").reindex(full_range)   # inserts NaN rows for gaps
+df = df.set_index("date").reindex(full_range)
 df.index.name = "date"
 df[numeric_cols] = df[numeric_cols].interpolate(method="time")
 
 df = df.reset_index()
-# print(f"Shape after gap fill : {df.shape}  (+{df.shape[0] - 18776} rows filled)")
+
 MIN_FREEZE_RUN = 5
 def fix_sensor_freeze(df, col, min_run=5):
     same_as_prev = df[col] == df[col].shift(1)
     cumsum_series = (same_as_prev != same_as_prev.shift()).cumsum()
     groups = same_as_prev.groupby(cumsum_series)
-    run_lengths = groups.sum()                       # length of each run
+    run_lengths = groups.sum()
     frozen_group_ids = run_lengths[run_lengths >= min_run].index
 
     n_replaced = 0
     for gid in frozen_group_ids:
         mask = cumsum_series == gid
-        df.loc[mask, col] = np.nan                  # mark as NaN
+        df.loc[mask, col] = np.nan
         n_replaced += mask.sum()
-
 
     df = df.set_index("date")
     df[col] = df[col].interpolate(method="time")
@@ -84,7 +88,7 @@ for col in numeric_cols:
     caps_25[col] = Q3 + IQR_MULTIPLIER * IQR
 
 for col, new_cap in caps_25.items():
-    old_cap_rows = (df[col] >= df[col].max() - 0.1).sum()  # rows at old ceiling
+    old_cap_rows = (df[col] >= df[col].max() - 0.1).sum()
     print(f"  {col}: old cap={df[col].max():.2f} | new cap={new_cap:.2f} "
           f"| rows released from old ceiling={old_cap_rows}")
 
@@ -197,9 +201,42 @@ df[numeric_cols] = df[numeric_cols].round(2)
 df.to_csv("delhi_aqi_final.csv", index=False)
 print("Saved → delhi_aqi_final.csv")
 
+def get_pm25_subindex(x):
+    if pd.isna(x):
+        return 0
+    elif x <= 30:
+        return x * 50 / 30
+    elif x <= 60:
+        return 50 + (x - 30) * 50 / 30
+    elif x <= 90:
+        return 100 + (x - 60) * 100 / 30
+    elif x <= 120:
+        return 200 + (x - 90) * 100 / 30
+    elif x <= 250:
+        return 300 + (x - 120) * 100 / 130
+    else:
+        return 400 + (x - 250) * 100 / 130
 
-import numpy as np
-from sklearn.preprocessing import StandardScaler
+def get_pm10_subindex(x):
+    if pd.isna(x):
+        return 0
+    elif x <= 50:
+        return x
+    elif x <= 100:
+        return 50 + (x - 50) * 50 / 50
+    elif x <= 250:
+        return 100 + (x - 100) * 100 / 150
+    elif x <= 350:
+        return 200 + (x - 250) * 100 / 100
+    elif x <= 430:
+        return 300 + (x - 350) * 100 / 80
+    else:
+        return 400 + (x - 430) * 100 / 80
+
+df["pm25_aqi"] = df["pm2_5"].apply(get_pm25_subindex)
+df["pm10_aqi"] = df["pm10"].apply(get_pm10_subindex)
+df["aqi"] = df[["pm25_aqi", "pm10_aqi"]].max(axis=1).round(0)
+df = df.drop(columns=["pm25_aqi", "pm10_aqi"])
 
 df["date"] = pd.to_datetime(df["date"])
 
@@ -286,11 +323,6 @@ print(df.head())
 df.to_csv("delhi_aqi_feature_engineered.csv", index=False)
 print("\nSaved → delhi_aqi_feature_engineered.csv")
 
-from sklearn.model_selection import train_test_split
-from sklearn.ensemble import RandomForestRegressor
-
-df = pd.read_csv("delhi_aqi_feature_engineered.csv")
-
 if "date" in df.columns:
     df = df.drop("date", axis=1)
 
@@ -304,11 +336,49 @@ X_train, X_test, y_train, y_test = train_test_split(
     random_state=42
 )
 
-model = RandomForestRegressor(
-    n_estimators=100,
-    random_state=42
+rf_base = RandomForestRegressor(random_state=42)
+
+param_grid = {
+    'n_estimators': [50, 100],
+    'max_depth': [10, 20],
+    'min_samples_split': [2, 5]
+}
+
+grid_search = GridSearchCV(
+    estimator=rf_base,
+    param_grid=param_grid,
+    cv=5,
+    n_jobs=-1,
+    scoring='neg_mean_absolute_error'
 )
 
-model.fit(X_train, y_train)
+grid_search.fit(X_train, y_train)
 
-print("Model trained successfully")
+best_rf_model = grid_search.best_estimator_
+
+print("\nOptimal parameters found:")
+print(grid_search.best_params_)
+print("Tuned model trained successfully\n")
+
+predictions = best_rf_model.predict(X_test)
+
+mae = mean_absolute_error(y_test, predictions)
+r2 = r2_score(y_test, predictions)
+
+print("EVALUATION RESULTS")
+print(f"Mean Absolute Error (MAE): {mae:.2f}")
+print(f"R-squared (R2) Score: {r2:.2f}\n")
+
+importances = best_rf_model.feature_importances_
+feature_names = X.columns
+importance_df = pd.DataFrame({'Feature': feature_names, 'Importance': importances})
+importance_df = importance_df.sort_values(by='Importance', ascending=True)
+
+plt.figure(figsize=(10, 8))
+plt.barh(importance_df['Feature'][-15:], importance_df['Importance'][-15:], color='steelblue')
+plt.xlabel('Importance Score')
+plt.ylabel('Features')
+plt.title('Top 15 Random Forest Feature Importances')
+plt.tight_layout()
+plt.savefig('feature_importance.png')
+print("Feature importance chart saved as 'feature_importance.png'")
