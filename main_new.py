@@ -439,21 +439,22 @@ plt.savefig("feature_importance.png")
 print("Chart successfully saved as feature_importance.png!")
 
 # ============================================================
-# ACTUAL vs PREDICTED AQI SCATTER PLOT
+# Actual vs Predicted AQI
 # ============================================================
+plt.figure(figsize=(8, 8))
 
-plt.figure(figsize=(8,6))
-
+# Scatter plot
 plt.scatter(
     y_test,
     predictions,
-    alpha=0.5,
-    color="royalblue",
-    s=25,
-    label="Predicted points"
+    color="steelblue",
+    alpha=0.7,
+    edgecolors="black",
+    s=45,
+    label="Predictions"
 )
 
-# Perfect prediction line
+# Perfect prediction line (y = x)
 min_val = min(y_test.min(), predictions.min())
 max_val = max(y_test.max(), predictions.max())
 
@@ -461,30 +462,36 @@ plt.plot(
     [min_val, max_val],
     [min_val, max_val],
     color="red",
+    linestyle="--",
     linewidth=2,
-    label="Perfect prediction (Actual = Predicted)"
+    label="Perfect Prediction"
 )
 
+# Same scale on both axes
+plt.xlim(min_val, max_val)
+plt.ylim(min_val, max_val)
+
+# Labels and title
 plt.xlabel("Actual AQI")
 plt.ylabel("Predicted AQI")
-plt.title("Actual vs Predicted AQI - Random Forest")
+plt.title("Actual vs Predicted AQI (Random Forest)")
 
-plt.legend()
-plt.grid(alpha=0.3)
-
-# Show R2 and MAE on graph
+# Display evaluation metrics
 plt.text(
     0.05,
     0.95,
-    f"R² = {r2:.2f}\nMAE = {mae:.2f}",
+    f"MAE = {mae:.2f}\nR² = {r2:.3f}",
     transform=plt.gca().transAxes,
-    fontsize=12,
+    fontsize=11,
     verticalalignment="top",
-    bbox=dict(boxstyle="round", facecolor="white", alpha=0.8)
+    bbox=dict(facecolor="white", edgecolor="gray")
 )
 
+plt.grid(True, alpha=0.3)
+plt.legend()
 plt.tight_layout()
-plt.savefig("actual_vs_predicted_aqi.png", dpi=300)
+
+plt.savefig("actual_vs_predicted.png", dpi=300)
 plt.show()
 
-print("Saved → actual_vs_predicted_aqi.png")
+print("Chart successfully saved as actual_vs_predicted.png!")
