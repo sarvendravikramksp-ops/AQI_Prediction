@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Delhi AQI Analytics Dashboard</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f0f2f5;
+            color: #333;
+        }
+        header {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .dashboard-layout {
+            display: flex;
+            gap: 20px;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        .console-panel {
+            flex: 1;
+            background-color: #1e1e1e;
+            color: #39ff14; /* Matrix Green text style */
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+            max-height: 800px;
+            overflow-y: auto;
+        }
+        .console-panel h3 {
+            color: #ffffff;
+            margin-top: 0;
+            border-bottom: 1px solid #444;
+            padding-bottom: 8px;
+        }
+        pre {
+            font-family: 'Courier New', Courier, monospace;
+            white-space: pre-wrap;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+        .visual-panel {
+            flex: 1.2;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+        .chart-card {
+            background: #ffffff;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+            text-align: center;
+        }
+        .chart-card img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>Delhi AQI Prediction Pipeline System</h1>
+        <p>Local Web Dashboard Monitoring Engine</p>
+    </header>
+
+    <div class="dashboard-layout">
+
+        <div class="console-panel">
+            <h3>System Terminal Outputs</h3>
+            <pre>{{ output }}</pre>
+        </div>
+
+
+        <div class="visual-panel">
+            <div class="chart-card">
+                <h3>Feature Importance Matrix Analysis</h3>
+                <img src="{{ chart1 }}" alt="Feature Importances Chart">
+            </div>
+            <div class="chart-card">
+                <h3>Random Forest Validation: Actual vs Predictions</h3>
+                <img src="{{ chart2 }}" alt="Actual vs Predicted Chart">
+            </div>
+        </div>
+    </div>
+
+</body>
+</html>
